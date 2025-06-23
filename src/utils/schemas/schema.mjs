@@ -25,7 +25,7 @@ const userSchema = new mongoose.Schema({
 
 const errandSchema = new mongoose.Schema({
     userId: {
-        type: String,
+        type: mongoose.Schema.Types.ObjectId,
         required: true,
         ref: 'users',
     },
@@ -50,7 +50,7 @@ const errandSchema = new mongoose.Schema({
         required: true,
     },
     runnerId: {
-        type: String,
+        type: mongoose.Schema.Types.ObjectId,
         ref: 'users',
         default: null,
     },
@@ -60,6 +60,104 @@ const errandSchema = new mongoose.Schema({
         default: 'available',
     },
     
+},{timestamps: true})
+
+const chatSchema = new mongoose.Schema({
+    room: {
+        type: String,
+        required: true
+    },
+    senderID: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true,
+        ref: 'users'
+    },
+    errandId: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true,
+        ref: 'errands'
+    },
+    message: {
+        type: String,
+        required: true,
+    }
+},{timestamps:true})
+
+const reviewSchema = new mongoose.Schema({
+    userID: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true,
+        ref: 'users'
+    },
+    runnerID: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true,
+        ref: 'users',
+    },
+    rating: {
+        type: String,
+        required: true,
+    },
+})
+
+const walletSchema = new mongoose.Schema({
+    userID: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true,
+        ref: 'users',
+    },
+    balance: {
+        type: Number,
+        required: true,
+        default: 0.00,
+    }
+},{timestamps: true});
+
+const transactionSchema = new mongoose.Schema({
+    senderID: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true,
+        ref: 'users'
+    },
+    receipientID: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true,
+        ref: 'users'
+    },
+    amount: {
+        type: Number,
+        required: true,
+    },
+    description: {
+        type: String,
+        default: null,
+    },
+    status: {
+        type: String,
+        enum: ['accepted', 'verified'],
+        default: 'accepted'
+    }
+},{timestamps: true});
+
+const notificationSchema = new mongoose.Schema({
+    userID: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true,
+        ref: 'users'
+    },
+    header: {
+        type: String,
+        required: true,
+    },
+    message: {
+        type: String,
+        required: true,
+    },
+    status:{
+        type: String,
+        enum: ['unread', 'read'],
+        default: 'unread'
+    }
 },{timestamps: true})
 
 errandSchema.pre('save', function(next) {
@@ -77,3 +175,8 @@ userSchema.pre('save', async function(next) {
 
 export const User = mongoose.model('User', userSchema, 'users');
 export const Errand = mongoose.model('Errand', errandSchema, 'errands');
+export const Chat = mongoose.model('Chat', chatSchema,' chats');
+export const Review = mongoose.model('Review', reviewSchema, 'reviews');
+export const Wallet = mongoose.model('Wallet', walletSchema, 'wallet');
+export const Transaction = mongoose.model('Transaction', transactionSchema, 'transactions');
+export const Notification = mongoose.model('Notifications',notificationSchema, 'notifications');

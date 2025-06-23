@@ -2,24 +2,36 @@ import express from 'express';
 import cors from 'cors'
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
-import {User, Errand} from './utils/schemas/schema.mjs'
+import {Chat} from './utils/schemas/schema.mjs'
+import { Server } from 'socket.io';
+import http from 'http'
+
+import userRouter from './routes/users.mjs'
+import authRouter from './routes/auth.mjs'
+import errandRouter from './routes/errands.mjs'
+import chatRouter from './routes/chats.mjs'
+import adminRouter from './routes/admin.mjs'
+import paymentRouter from './routes/payment.mjs'
+import reviewRouter from './routes/review.mjs'
+import notificationRouter from './routes/notification.mjs'
+import dashboardRouter from './routes/dashboard.mjs'
 
 dotenv.config();
 const app = express();
+
+const server = http.createServer(app);
+const userSocketMap = new Map();
+
 
 app.use(express.json());
 app.use(cors());
 
 const {
-    PORT, 
-    Secret
+    DB,
+    PORT
 } = process.env;
 
-var token;
-
-mongoose.connect('mongodb://localhost:27017/campus-errand')
+mongoose.connect(DB)
 .then(() => console.log('MongoDB Connected'))
 .catch(err => console.log(err));
 
@@ -34,110 +46,7 @@ app.get('/', (request, response) => {
  * 
  ******************/
 
-app.post('/api/auth/register', async (request, response) => {
-    const { 
-        name, 
-        email, 
-        password, 
-        role
-    } = request.body;
-
-    const user = new User({
-        name,
-        email,
-        password,
-        role
-    });
-
-    try{
-        const savedUser = await user.save();
-        response.status(200).json({
-            message: 'User registered successfully',
-            user: savedUser
-        });
-    }catch(error){
-        console.log(error);
-        response.status(500).json({
-            message: 'Error registering user',
-            error: error.message
-        });
-    }
-});
-
-app.post('/api/auth/login', async (request, response) => {
-    const {email, password} = request.body;
-    try{
-        if(!email) throw new Error('User Email not found');
-        if(!password) throw new Error('User Password not found');
-        const salt = await bcrypt.genSalt(10);
-        const encryptedPassword = await bcrypt.hash(password, salt)
-        console.log(encryptedPassword);
-        const user = await User.findOne({email: email});
-        if(user){
-
-            const isMatch = await bcrypt.compare(password, user.password);
-            if(!isMatch){
-                throw new Error('Invalid Credentials');
-            }else{
-                token = jwt.sign({
-                    userId: user._id,
-                    userName: user.name,
-                    userEmail: user.email,
-                    userRole: user.role 
-                },Secret,{expiresIn: '2h'})
-    
-                response.json({
-                    message: 'Login Successful',
-                    user: {
-                        Id: user._id,
-                        Name: user.name,
-                        Email: user.email,
-                        Role: user.role
-                    },
-                    token: token,
-                })
-            }
-
-        }else{
-            throw new Error('User not Found');
-        }
-    }catch(error){
-        console.log(error);
-        response.status(401).json({
-            message: 'Login Error',
-            error: error.message
-        })
-    }
-})
-
-app.get('/api/auth/me', async (request, response) => {
-    const authHeader = request.headers['authorization']; 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return response.status(401).json({
-            message: 'Authorization header missing or improperly formatted',
-        });
-    }
-
-    const token = authHeader.split(' ')[1]; 
-    try {
-        if (!token) throw new Error('No token found');
-        jwt.verify(token, Secret, async (error, decoded) => {
-            if (error) {
-                throw new Error('Invalid Token');
-            } else {
-                response.json({
-                    user: decoded,
-                });
-            }
-        });
-    } catch (error) {
-        console.log(error);
-        response.status(401).json({
-            message: 'Unable to get user details',
-            error: error.message,
-        });
-    }
-});
+app.use(authRouter);
 
 /*******************
  * 
@@ -145,121 +54,7 @@ app.get('/api/auth/me', async (request, response) => {
  * 
  ******************/
 
-app.get('/api/users/:id', async (request,response) =>{
-    const {id} = request.params;
-    const authHeader = request.headers['authorization']; 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return response.status(401).json({
-            message: 'Authorization header missing or improperly formatted',
-        });
-    }
-    
-    const token = authHeader.split(' ')[1]; 
-    try{
-        if(!token) throw new Error('No token found');
-        const user = await User.findById(id);
-        if(!user){
-            throw new Error('User not found');
-        }else{
-            response.json({
-                message: 'User found',
-                user: user
-            })
-            
-        }
-    }catch(error){
-        console.log(error);
-        response.status(404).json({
-            message: 'Error getting user',
-            error: error.message
-        })
-    }
-})
-
-app.patch('/api/users/:id', async (request, response) => {
-    const {
-        body,
-        params: { id }
-    } = request;
-
-    const authHeader = request.headers['authorization']; 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return response.status(401).json({
-            message: 'Authorization header missing or improperly formatted',
-        });
-    }
-    
-    const token = authHeader.split(' ')[1]; 
-
-    try {
-        if (!token) throw new Error('No token found');
-        
-        jwt.verify(token, Secret, async (error, decoded) => {
-            if (error) throw new Error('Invalid Token');
-            
-            if (decoded.userRole !== 'admin' || decoded.userId !== id) {
-                return response.status(403).json({
-                    message: 'Forbidden: You do not have permission to update this user',
-                });
-            }
-
-            const user = await User.findById(id);
-            if (!user) {
-                throw new Error('User not found');
-            } else {
-                Object.assign(user, body); // Update user fields with request body
-                const updatedUser = await user.save(); // Save the updated user
-                response.json({
-                    message: 'User updated',
-                    user: updatedUser
-                });
-            }
-        });
-    } catch (error) {
-        console.log(error);
-        response.status(400).json({
-            message: 'Error updating user',
-            error: error.message
-        });
-    }
-});
-
-app.get('/api/runners', async (request, response) => {
-    const authHeader = request.headers['authorization']; 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return response.status(401).json({
-            message: 'Authorization header missing or improperly formatted',
-        });
-    }
-    
-    const token = authHeader.split(' ')[1]; 
-
-    try {
-        if (!token) throw new Error('No token found');
-
-        jwt.verify(token, Secret, async (error, decoded) => {
-            if (error) throw new Error('Invalid Token');
-
-            if (decoded.userRole !== 'admin') {
-                return response.status(403).json({
-                    message: 'Forbidden: You do not have permission to access this endpoint',
-                });
-            }
-
-            const runners = await User.find({ role: 'runner' }); 
-            response.json({
-                message: 'Runners retrieved successfully',
-                runners: runners,
-            });
-        });
-    } catch (error) {
-        console.log(error);
-        response.status(500).json({
-            message: 'Error retrieving runners',
-            error: error.message,
-        });
-    }
-});
+app.use(userRouter);
 
 /*******************
  * 
@@ -267,305 +62,7 @@ app.get('/api/runners', async (request, response) => {
  * 
  ******************/
 
-app.post('/api/errands', async (request, response) => {
-    const {
-        title,
-        description,
-        pickupLocation,
-        dropoffLocation,
-        price
-    } = request.body;
-
-    const authHeader = request.headers['authorization']; 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return response.status(401).json({
-            message: 'Authorization header missing or improperly formatted',
-        });
-    }
-    
-    const token = authHeader.split(' ')[1];
-
-    try {
-        if (!token) throw new Error('No token Provided')
-
-        jwt.verify(token, Secret, async (error, decoded) => {
-            if (error) throw new Error('Invalid Token');
-
-            if (!decoded.userId) throw new Error('Unable to get userId');
-
-
-
-            const userId = decoded.userId;
-
-
-            const errand = new Errand({
-                userId,
-                title, 
-                description,
-                pickupLocation,
-                dropoffLocation,
-                price
-            });
-
-            const savedErrand = await errand.save();
-
-            response.status(200).json({
-                message: 'Errand created successfully',
-                errand: savedErrand
-            });
-        })
-    } catch (error) {
-        console.log(error);
-        response.status(500).json({
-            message: 'Error creating errand',
-            error: error.message
-        })
-    }
-})
-
-app.get('/api/errands', async (request, response) => {
-    const authHeader = request.headers['authorization']; 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return response.status(401).json({
-            message: 'Authorization header missing or improperly formatted',
-        });
-    }
-    
-    const token = authHeader.split(' ')[1];
-
-    try {
-
-        if (!token) throw new Error('No token Provided')
-
-        jwt.verify(token, Secret, async (error, decoded) => {
-            if (error) throw new Error('Invalid Token');
-
-            if (!decoded.userId) throw new Error('Unable to get userId');
-
-            const errands = await Errand.find({userId: decoded.userId});
-
-            response.json({
-                message: 'Errands received successfully',
-                errands : errands
-            })
-            
-        })
-    } catch (error) {
-        console.log(error);
-        response.json({
-            message: 'Error retrieving errands',
-            error: error.message
-        })
-    }
-})
-
-app.get('/api/errands/available', async (request, response) => {
-    const authHeader = request.headers['authorization']; 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return response.status(401).json({
-            message: 'Authorization header missing or improperly formatted',
-        });
-    }
-    
-    const token = authHeader.split(' ')[1];
-
-    try {
-
-        if (!token) throw new Error('No token Provided')
-
-        jwt.verify(token, Secret, async (error, decoded) => {
-            if (error) throw new Error('Invalid Token');
-
-            if (decoded.userRole !== 'runner') {
-                return response.status(403).json({
-                    message: 'Forbidden: You do not have permission to access this endpoint',
-                });
-            }
-
-            const errands = await Errand.find({status: 'available'});
-
-            response.json({
-                message: 'Errands received successfully',
-                errands : errands
-            })
-            
-        })
-    } catch (error) {
-        console.log(error);
-        response.json({
-            message: 'Error retrieving errands',
-            error: error.message
-        })
-    }
-})
-
-app.get('/api/errands/:id', async (request, response) => {
-    const {id} = request.params;
-
-    const authHeader = request.headers['authorization']; 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return response.status(401).json({
-            message: 'Authorization header missing or improperly formatted',
-        });
-    }
-    
-    const token = authHeader.split(' ')[1];
-    
-    try {
-        
-        if (!token) throw new Error('No token Provided')
-
-        jwt.verify(token, Secret, async (error, decoded) => {
-            if (error) throw new Error('Invalid Token');
-
-            const errandDetails = await Errand.findById(id);
-            if(!errandDetails) throw new Error('Errand not found')
-
-            response.json({
-                message: 'Errand fetched successfully',
-                errand: errandDetails
-            })
-        })
-    
-    } catch (error) {
-        console.log(error);
-        response.status(400).json({
-            message: 'Error fetching errands',
-            error: error.message
-        })
-    }
-})
-
-app.patch('/api/errands/:id/accept', async (request, response) => {
-    const {id} = request.params;
-
-    const authHeader = request.headers['authorization']; 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return response.status(401).json({
-            message: 'Authorization header missing or improperly formatted',
-        });
-    }
-    
-    const token = authHeader.split(' ')[1];
-    
-    try {
-        
-        if (!token) throw new Error('No token Provided')
-
-        jwt.verify(token, Secret, async (error, decoded) => {
-            if (error) throw new Error('Invalid Token');
-
-            if (decoded.userRole !== 'runner'){
-                return response.status(403).json({
-                    message: 'Forbidden: You do not have permission to access this endpoint'
-                })
-            }
-
-            const errand = await Errand.findById(id);
-            if(!errand) throw new Error('Errand not found')
-
-            errand.status = 'accepted'
-
-            const acceptedErrand = await errand.save();
-            response.json({
-                message: 'Errand accepted successfully',
-                errand: acceptedErrand
-            })
-        })
-    }catch(error){
-        console.log(error);
-        response.status(400).json({
-            message: 'Error accepting errand',
-            error: error.message
-        })
-    }
-})
-
-app.patch('/api/errands/:id/complete', async (request, response) => {
-    const {id} = request.params;
-
-    const authHeader = request.headers['authorization']; 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return response.status(401).json({
-            message: 'Authorization header missing or improperly formatted',
-        });
-    }
-    
-    const token = authHeader.split(' ')[1];
-    
-    try {
-        
-        if (!token) throw new Error('No token Provided')
-
-        jwt.verify(token, Secret, async (error, decoded) => {
-            if (error) throw new Error('Invalid Token');
-
-            if (decoded.userRole !== 'runner'){
-                return response.status(403).json({
-                    message: 'Forbidden: You do not have permission to access this endpoint'
-                })
-            }
-
-            const errand = await Errand.findById(id);
-            if(!errand) throw new Error('Errand not found')
-
-            errand.status = 'complete'
-
-            const completedErrand = await errand.save();
-            response.json({
-                message: 'Errand completed successfully',
-                errand: completedErrand
-            })
-        })
-    }catch(error){
-        console.log(error);
-        response.status(400).json({
-            message: 'Error accepting errand',
-            error: error.message
-        })
-    }
-})
-
-app.delete('/api/errands/:id', async (request, response) => {
-    const {id} = request.params;
-
-    const authHeader = request.headers['authorization']; 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return response.status(401).json({
-            message: 'Authorization header missing or improperly formatted',
-        });
-    }
-    
-    const token = authHeader.split(' ')[1];
-
-    try {
-        jwt.verify(token, Secret, async (error, decoded) => {
-            if (error) throw new Error('Invalid Token');
-    
-            if (decoded.userRole !== 'user') {
-                return response.status(403).json({
-                    message: 'Forbidden: You do not have permission to access this endpoint',
-                });
-            }
-
-            const errand = await Errand.findById(id);
-            if (!errand) throw new Error('Errand not found');
-
-            await errand.deleteOne();
-
-            response.status(200).json({
-                message: 'Errand deleted successfully',
-            });
-        });
-    } catch (error) {
-        console.log(error);
-        response.status(500).json({
-            message: 'Error deleting errand',
-            error: error.message,
-        });
-    }
-});
-
+app.use(errandRouter)
 
 /*******************
  * 
@@ -573,127 +70,100 @@ app.delete('/api/errands/:id', async (request, response) => {
  * 
  ******************/
 
-app.get('/api/admin/requests', async (request, response) => {
-    
-    const authHeader = request.headers['authorization']; 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return response.status(401).json({
-            message: 'Authorization header missing or improperly formatted',
-        });
+app.use(adminRouter);
+
+/*******************
+ * 
+ * CHAT ENDPOINT
+ * 
+ ******************/
+
+app.use(chatRouter);
+
+/*******************
+ * 
+ * REVIEW ENDPOINT
+ * 
+ ******************/
+
+app.use(reviewRouter)
+
+/*******************
+ * 
+ * PAYMENT/WALLET ENDPOINT
+ * 
+ ******************/
+
+app.use(paymentRouter);
+
+/*******************
+ * 
+ * NOTIFICATION ENDPOINT
+ * 
+ ******************/
+
+app.use(notificationRouter);
+
+/*******************
+ * 
+ * DASHBOARD ENDPOINT
+ * 
+ ******************/
+
+app.use(dashboardRouter);
+
+
+// Initialize Socket.IO
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+const io = new Server(server, {
+    cors: {
+        origin: '*', // Adjust this to your frontend's origin
+        methods: ['GET', 'POST']
     }
-    
-    const token = authHeader.split(' ')[1];
+});
 
-    try {
-        if (!token) throw new Error('No token Provided')
+// Handle Socket.IO connections
+io.on('connection', (socket) => {
+    console.log('User connected:', socket.id);
 
-        jwt.verify(token, Secret, async (error, decoded) => {
-            if (error) throw new Error('Invalid Token')
+    socket.on('joinRoom', (data) => {
+        const {room , userId} = data;
 
-            if (decoded.userRole !== 'admin') {
-                return response.status(403).json({
-                    message: 'Forbidden: You do not have permission to access this endpoint'
-                })
-            }
+        userSocketMap.set(socket.id, userId);
 
-            const errands = await Errand.find();
+        socket.join(room);
+        console.log(`User ${socket.id} joined room: ${room}`);
+    });
 
-            response.json({
-                message: 'Errands retrieved successfully',
-                errands: errands
-            })
-        })    
-    } catch (error) {
-        console.log(error);
-        response.json({
-            message: 'Error retrieving errands',
-            error: error.message
-        })
-    }
-})
+    // Listen for chat messages
+    socket.on('send-message', async (data) => {
+        const {message, errandId} = data;
 
-app.get('/api/admin/users', async (request, response) => {
-        
-    const authHeader = request.headers['authorization']; 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return response.status(401).json({
-            message: 'Authorization header missing or improperly formatted',
-        });
-    }
-    
-    const token = authHeader.split(' ')[1];
+        const userID = userSocketMap.get(socket.id);
 
-    try {
-        if (!token) throw new Error('No token Provided')
+        console.log('Message received from: ' + userID);
 
-        jwt.verify(token, Secret, async (error, decoded) => {
-            if (error) throw new Error('Invalid Token')
-
-            if (decoded.userRole !== 'admin') {
-                return response.status(403).json({
-                    message: 'Forbidden: You do not have permission to access this endpoint'
-                })
-            }
-
-            const users = await User.find({role : 'user'});
-
-            response.json({
-                message: 'Errands retrieved successfully',
-                users: users
-            })
-        })    
-    } catch (error) {
-        console.log(error);
-        response.json({
-            message: 'Error retrieving users',
-            error: error.message
-        })
-    }
-})
-
-app.delete('/api/admin/users/:id', async (request, response) => {
-    const {id} = request.params;
-
-    const authHeader = request.headers['authorization']; 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return response.status(401).json({
-            message: 'Authorization header missing or improperly formatted',
-        });
-    }
-    
-    const token = authHeader.split(' ')[1];
-
-    try {
-
-        if (!token) throw new Error('No token provided');
-        
-        jwt.verify(token, Secret, async (error, decoded) => {
-            if (error) throw new Error('Invalid Token');
-
-            if (decoded.userRole !== 'admin') {
-                return response.status(400).json({
-                    message: 'Forbidden: You do not have permission to access this endpoint'
-                })
-            }
-
-            const user = await User.findById(id);
-            if (!user) throw new Error('User not found');
-
-            await user.deleteOne();
-
-            response.status(200).json({
-                message: 'User deleted successfully',
+        try {
+            const newMessage = new Chat({
+                room: errandId,
+                senderID: userID,
+                message: message
             });
-        })
-    } catch (error) {
-        console.log(error);
-        response.json({
-            message: 'Error deleting user',
-            error: error.message
-        })
-    }
-})
 
+            await newMessage.save();
+            console.log('Message Saved');
 
+        } catch (error) {
+            console.log('Error saving message:', error)
+        }
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+        socket.broadcast.to(errandId).emit('receive-message', {message});
+    });
+
+    // Handle user disconnection
+    socket.on('disconnect', () => {
+        console.log('A user disconnected:', socket.id);
+        userSocketMap.delete(socket.id);
+    });
+});
