@@ -27,6 +27,13 @@ router.post('/api/auth/register', async (request, response) => {
     });
 
     try{
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            return response.status(409).json({
+                message: 'User already registered with this email',
+            });
+        }
+
         const savedUser = await user.save();
         response.status(200).json({
             message: 'User registered successfully',
