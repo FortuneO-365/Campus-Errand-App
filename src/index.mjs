@@ -25,7 +25,7 @@ const userSocketMap = new Map();
 app.use(cors({
     origin: 'http://localhost:3000', // Adjust this to your frontend's
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization','Cache-Control'],
     credentials: true
 }));
 
