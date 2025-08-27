@@ -117,4 +117,16 @@ router.get('/api/dashboard/summary', async (request, response) => {
     }
 });
 
+
+router.get('/api/dashboard/recent', async (request, response) => {
+    const authHeader = request.headers['authorization'];
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return response.status(401).json({
+            message: 'Authorization header missing or improperly formatted',
+        });
+    }
+
+    const token = authHeader.split(' ')[1];
+})
 export default router;

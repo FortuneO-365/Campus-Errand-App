@@ -2,6 +2,7 @@ import { Router } from "express";
 import {Errand} from '../utils/schemas/schema.mjs'
 import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
+import mongoose from "mongoose"
 
 dotenv.config();
 const router = Router();
