@@ -28,7 +28,8 @@ router.post('/api/errands', async (request, response) => {
     const token = authHeader.split(' ')[1];
 
     try {
-        if (!token) throw new Error('No token Provided')
+        if (!token) return response.status(401).json({
+            message: 'Invalid token'
 
         jwt.verify(token, Secret, async (error, decoded) => {
             if (error) throw new Error('Invalid Token');
@@ -55,7 +56,7 @@ router.post('/api/errands', async (request, response) => {
         })
     } catch (error) {
         console.log(error);
-        response.status(500).json({
+        response.json({
             message: 'Error creating errand',
             error: error.message
     })
