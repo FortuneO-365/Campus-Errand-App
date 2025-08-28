@@ -10,13 +10,6 @@ const router = Router();
 const { Secret } = process.env;
 
 router.post('/api/errands', async (request, response) => {
-    const {
-        title,
-        description,
-        pickupLocation,
-        dropoffLocation,
-        price
-    } = request.body;
 
     const authHeader = request.headers['authorization']; 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -27,6 +20,20 @@ router.post('/api/errands', async (request, response) => {
     }
     
     const token = authHeader.split(' ')[1];
+
+    const {
+        title,
+        description,
+        pickupLocation,
+        dropoffLocation,
+        price
+    } = request.body;
+
+    if(!title||!description||!pickupLocation||!dropoffLocation||!price){
+       return response.status(400).json({
+            message: 'Missing required fields'});
+        }
+}
 
     try {
         if (!token) {
