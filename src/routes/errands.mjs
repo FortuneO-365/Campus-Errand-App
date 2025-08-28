@@ -29,7 +29,7 @@ router.post('/api/errands', async (request, response) => {
 
     try {
         if (!token) return response.status(401).json({
-            message: 'Invalid token'
+            message: 'Invalid token'});
 
         jwt.verify(token, Secret, async (error, decoded) => {
             if (error) throw new Error('Invalid Token');
