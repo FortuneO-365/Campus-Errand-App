@@ -46,7 +46,7 @@ router.post('/api/errands', async (request, response) => {
 
             if (!decoded.userId) throw new Error('Unable to get userId');
 
-            const userId = mongoose.Types.ObjectId(decoded.userId);
+            const userId = decoded.userId;
 
             const errand = new Errand({
                 userId,
