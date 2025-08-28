@@ -20,6 +20,7 @@ router.post('/api/errands', async (request, response) => {
 
     const authHeader = request.headers['authorization']; 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        console.log('xx');
         return response.status(401).json({
             message: 'Authorization header missing or improperly formatted',
         });
@@ -28,8 +29,11 @@ router.post('/api/errands', async (request, response) => {
     const token = authHeader.split(' ')[1];
 
     try {
-        if (!token) return response.status(401).json({
+        if (!token) {
+            console.log('x');
+            return response.status(401).json({
             message: 'Invalid token'});
+        }
 
         jwt.verify(token, Secret, async (error, decoded) => {
             if (error) throw new Error('Invalid Token');
