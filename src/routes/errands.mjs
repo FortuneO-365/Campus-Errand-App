@@ -33,7 +33,7 @@ router.post('/api/errands', async (request, response) => {
        return response.status(400).json({
             message: 'Missing required fields'});
         }
-}
+    }
 
     try {
         if (!token) {
