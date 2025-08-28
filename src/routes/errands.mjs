@@ -32,7 +32,6 @@ router.post('/api/errands', async (request, response) => {
     if(!title||!description||!pickupLocation||!dropoffLocation||!price){
        return response.status(400).json({
             message: 'Missing required fields'});
-        }
     }
 
     try {
