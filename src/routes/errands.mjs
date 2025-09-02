@@ -10,6 +10,17 @@ const router = Router();
 const { Secret } = process.env;
 
 router.post('/api/errands', async (request, response) => {
+
+    const authHeader = request.headers['authorization']; 
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        console.log('xx');
+        return response.status(401).json({
+            message: 'Authorization header missing or improperly formatted',
+        });
+    }
+    
+    const token = authHeader.split(' ')[1];
+
     const {
         title,
         description,
@@ -18,14 +29,10 @@ router.post('/api/errands', async (request, response) => {
         price
     } = request.body;
 
-    const authHeader = request.headers['authorization']; 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return response.status(401).json({
-            message: 'Authorization header missing or improperly formatted',
-        });
+    if(!title||!description||!pickupLocation||!dropoffLocation||!price){
+       return response.status(400).json({
+            message: 'Missing required fields'});
     }
-    
-    const token = authHeader.split(' ')[1];
 
     try {
         if (!token) return response.status(401).json({message:'No token Provided'})
@@ -35,7 +42,7 @@ router.post('/api/errands', async (request, response) => {
 
             if (!decoded.userId) return response.status(401).json({message:'Unable to get userId'});
 
-            const userId = mongoose.Types.ObjectId(decoded.userId);
+            const userId = decoded.userId;
 
             const errand = new Errand({
                 userId,
@@ -55,7 +62,7 @@ router.post('/api/errands', async (request, response) => {
         })
     } catch (error) {
         console.log(error);
-        response.status(500).json({
+        response.json({
             message: 'Error creating errand',
             error: error.message
         })
