@@ -19,10 +19,10 @@ router.get('/api/notifications', async (request, response) => {
     
     const token = authHeader.split(' ')[1];
     try {
-        if (!token) throw new Error('No token Provided');
+        if (!token) return response.status(401).json({message:'No token Provided'});
 
         jwt.verify(token, Secret, async (error, decoded) => {
-            if (error) throw new Error('Invalid Token');
+            if (error) return response.status(401).json({message:'Invalid Token'});
 
             const userId  = decoded.userId;
             const notifications = await Notification.find({userID: userId});
@@ -54,8 +54,8 @@ router.post('/api/notifications/read', async (request, response) => {
     
     const token = authHeader.split(' ')[1];
     try {
-        if(!token) throw new Error('No token provided');
-        if(!id) throw new Error('Notification ID not found');
+        if(!token) return response.status(401).json({message:'No token provided'});
+        if(!id) return response.status(401).json({message:'Notification ID not found'});
 
         const notification = await Notification.findById(id);
 

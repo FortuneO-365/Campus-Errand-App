@@ -21,14 +21,14 @@ router.post('/api/reviews/:runnerId', async (request, response) => {
     
     const token = authHeader.split(' ')[1];
     try {
-        if(!token) throw new Error('No token Provided');
-        if(!runnerId) throw new Error('Runner ID not found');
-        if(!rating) throw new Error('Rating not provided');
+        if(!token) return response.status(401).json({message:'No token Provided'});
+        if(!runnerId) return response.status(401).json({message:'Runner ID not found'});
+        if(!rating) return response.status(401).json({message:'Rating not provided'});
 
         jwt.verify(token, Secret, async (error, decoded) => {
-            if (error) throw new Error('Invalid Token');
+            if (error) return response.status(401).json({message:'Invalid Token'});
 
-            if (!decoded.userId) throw new Error('Unable to get userId');
+            if (!decoded.userId) return response.status(401).json({message:'Unable to get userId'});
 
             const userId = decoded.userId;
 
@@ -69,8 +69,8 @@ router.get('/api/reviews/:runnerId', async (request, response) => {
     const token = authHeader.split(' ')[1];
 
     try {
-        if(!token) throw new Error('No token Provided');
-        if(!runnerId) throw new Error('Errand ID not found');
+        if(!token) return response.status(401).json({message:'No token Provided'});
+        if(!runnerId) return response.status(401).json({message:'Errand ID not found'});
 
         const reviews = await Review.find({runnerID: runnerId });
 

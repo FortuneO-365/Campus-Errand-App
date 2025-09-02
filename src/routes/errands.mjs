@@ -28,12 +28,12 @@ router.post('/api/errands', async (request, response) => {
     const token = authHeader.split(' ')[1];
 
     try {
-        if (!token) throw new Error('No token Provided')
+        if (!token) return response.status(401).json({message:'No token Provided'})
 
         jwt.verify(token, Secret, async (error, decoded) => {
-            if (error) throw new Error('Invalid Token');
+            if (error) return response.status(401).json({message:'Invalid Token'});
 
-            if (!decoded.userId) throw new Error('Unable to get userId');
+            if (!decoded.userId) return response.status(401).json({message:'Unable to get userId'});
 
             const userId = mongoose.Types.ObjectId(decoded.userId);
 
@@ -58,7 +58,7 @@ router.post('/api/errands', async (request, response) => {
         response.status(500).json({
             message: 'Error creating errand',
             error: error.message
-    })
+        })
     }
 })
 
@@ -74,12 +74,12 @@ router.get('/api/errands', async (request, response) => {
 
     try {
 
-        if (!token) throw new Error('No token Provided')
+        if (!token) return response.status(401).json({message:'No token Provided'})
 
         jwt.verify(token, Secret, async (error, decoded) => {
-            if (error) throw new Error('Invalid Token');
+            if (error) return response.status(401).json({message:'Invalid Token'});
 
-            if (!decoded.userId) throw new Error('Unable to get userId');
+            if (!decoded.userId) return response.status(401).json({message:'Unable to get userId'});
 
             const errands = await Errand.find({userId: decoded.userId});
 
@@ -110,10 +110,10 @@ router.get('/api/errands/available', async (request, response) => {
 
     try {
 
-        if (!token) throw new Error('No token Provided')
+        if (!token) return response.status(401).json({message:'No token Provided'})
 
         jwt.verify(token, Secret, async (error, decoded) => {
-            if (error) throw new Error('Invalid Token');
+            if (error) return response.status(401).json({message:'Invalid Token'});
 
             if (decoded.userRole !== 'runner') {
                 return response.status(403).json({
@@ -152,13 +152,13 @@ router.get('/api/errands/:id', async (request, response) => {
     
     try {
         
-        if (!token) throw new Error('No token Provided')
+        if (!token) return response.status(401).json({message:'No token Provided'})
 
         jwt.verify(token, Secret, async (error, decoded) => {
-            if (error) throw new Error('Invalid Token');
+            if (error) return response.status(401).json({message:'Invalid Token'});
 
             const errandDetails = await Errand.findById(id);
-            if(!errandDetails) throw new Error('Errand not found')
+            if(!errandDetails) return response.status(401).json({message:'Errand not found'})
 
             response.json({
                 message: 'Errand fetched successfully',
@@ -189,10 +189,10 @@ router.patch('/api/errands/:id/accept', async (request, response) => {
     
     try {
         
-        if (!token) throw new Error('No token Provided')
+        if (!token) return response.status(401).json({message:'No token Provided'})
 
         jwt.verify(token, Secret, async (error, decoded) => {
-            if (error) throw new Error('Invalid Token');
+            if (error) return response.status(401).json({message:'Invalid Token'});
 
             if (decoded.userRole !== 'runner'){
                 return response.status(403).json({
@@ -201,7 +201,7 @@ router.patch('/api/errands/:id/accept', async (request, response) => {
             }
 
             const errand = await Errand.findById(id);
-            if(!errand) throw new Error('Errand not found')
+            if(!errand) return response.status(401).json({message:'Errand not found'})
 
             errand.status = 'accepted'
 
@@ -234,10 +234,10 @@ router.patch('/api/errands/:id/complete', async (request, response) => {
     
     try {
         
-        if (!token) throw new Error('No token Provided')
+        if (!token) return response.status(401).json({message:'No token Provided'})
 
         jwt.verify(token, Secret, async (error, decoded) => {
-            if (error) throw new Error('Invalid Token');
+            if (error) return response.status(401).json({message:'Invalid Token'});
 
             if (decoded.userRole !== 'runner'){
                 return response.status(403).json({
@@ -246,7 +246,7 @@ router.patch('/api/errands/:id/complete', async (request, response) => {
             }
 
             const errand = await Errand.findById(id);
-            if(!errand) throw new Error('Errand not found')
+            if(!errand) return response.status(401).json({message:'Errand not found'})
 
             errand.status = 'complete'
 
@@ -279,7 +279,7 @@ router.delete('/api/errands/:id', async (request, response) => {
 
     try {
         jwt.verify(token, Secret, async (error, decoded) => {
-            if (error) throw new Error('Invalid Token');
+            if (error) return response.status(401).json({message:'Invalid Token'});
     
             if (decoded.userRole !== 'user') {
                 return response.status(403).json({
@@ -288,7 +288,7 @@ router.delete('/api/errands/:id', async (request, response) => {
             }
 
             const errand = await Errand.findById(id);
-            if (!errand) throw new Error('Errand not found');
+            if (!errand) return response.status(401).json({message:'Errand not found'});
 
             await errand.deleteOne();
 

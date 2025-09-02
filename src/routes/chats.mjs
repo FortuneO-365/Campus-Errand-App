@@ -16,8 +16,8 @@ router.get('/api/chats/:errandId', async(request, response) => {
     
     const token = authHeader.split(' ')[1];
     try {
-        if(!token) throw new Error('No token Provided');
-        if(!errandId) throw new Error('Errand ID not found');
+        if(!token) return response.status(401).json({message:'No token Provided'});
+        if(!errandId) return response.status(401).json({message:'Errand ID not found'});
 
         const messages = await Chat.find({room: errandId});
 
@@ -47,10 +47,10 @@ router.post('/api/chats/:errandId', async(request, response) => {
     
     const token = authHeader.split(' ')[1];
     try {
-        if(!token) throw new Error('No token Provided');
-        if(!errandId) throw new Error('Errand ID not found');
+        if(!token) return response.status(401).json({message:'No token Provided'});
+        if(!errandId) return response.status(401).json({message:'Errand ID not found'});
 
-        if(!message || !senderID) throw new Error('Message or Sender ID missing')
+        if(!message || !senderID) return response.status(401).json({message:'Message or Sender ID missing'})
 
         const newMessage = new Chat({
             room: errandId,

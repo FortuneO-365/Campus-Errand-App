@@ -22,7 +22,7 @@ router.get('/api/dashboard/summary', async (request, response) => {
     const token = authHeader.split(' ')[1];
 
     try {
-        if (!token) throw new Error('No token Provided');
+        if (!token) return response.status(401).json({message:'No token Provided'});
 
         const decoded = await verifyToken(token, Secret);
 

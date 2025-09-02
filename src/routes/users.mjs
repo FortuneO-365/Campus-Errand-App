@@ -19,10 +19,10 @@ router.get('/api/users/:id', async (request,response) =>{
     
     const token = authHeader.split(' ')[1]; 
     try{
-        if(!token) throw new Error('No token found');
+        if(!token) return response.status(401).json({message:'No token found'});
         const user = await User.findById(id);
         if(!user){
-            throw new Error('User not found');
+            return response.status(401).json({message:'User not found'});
         }else{
             response.json({
                 message: 'User found',
@@ -56,10 +56,10 @@ router.patch('/api/users/:id', async (request, response) => {
     const token = authHeader.split(' ')[1]; 
 
     try {
-        if (!token) throw new Error('No token found');
+        if (!token) return response.status(401).json({message:'No token found'});
         
         jwt.verify(token, Secret, async (error, decoded) => {
-            if (error) throw new Error('Invalid Token');
+            if (error) return response.status(401).json({message:'Invalid Token'});
             
             if (decoded.userRole !== 'admin' || decoded.userId !== id) {
                 return response.status(403).json({
@@ -69,7 +69,7 @@ router.patch('/api/users/:id', async (request, response) => {
 
             const user = await User.findById(id);
             if (!user) {
-                throw new Error('User not found');
+                return response.status(401).json({message:'User not found'});
             } else {
                 Object.assign(user, body); // Update user fields with request body
                 const updatedUser = await user.save(); // Save the updated user
@@ -99,10 +99,10 @@ router.get('/api/runners', async (request, response) => {
     const token = authHeader.split(' ')[1]; 
 
     try {
-        if (!token) throw new Error('No token found');
+        if (!token) return response.status(401).json({message:'No token found'});
 
         jwt.verify(token, Secret, async (error, decoded) => {
-            if (error) throw new Error('Invalid Token');
+            if (error) return response.status(401).json({message:'Invalid Token'});
 
             if (decoded.userRole !== 'admin') {
                 return response.status(403).json({

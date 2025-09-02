@@ -20,10 +20,10 @@ router.get('/api/admin/requests', async (request, response) => {
     const token = authHeader.split(' ')[1];
 
     try {
-        if (!token) throw new Error('No token Provided')
+        if (!token) return response.status(401).json({message:'No token Provided'})
 
         jwt.verify(token, Secret, async (error, decoded) => {
-            if (error) throw new Error('Invalid Token')
+            if (error) return response.status(401).json({message:'Invalid Token'})
 
             if (decoded.userRole !== 'admin') {
                 return response.status(403).json({
@@ -59,10 +59,10 @@ router.get('/api/admin/users', async (request, response) => {
     const token = authHeader.split(' ')[1];
 
     try {
-        if (!token) throw new Error('No token Provided')
+        if (!token) return response.status(401).json({message:'No token Provided'})
 
         jwt.verify(token, Secret, async (error, decoded) => {
-            if (error) throw new Error('Invalid Token')
+            if (error) return response.status(401).json({message:'Invalid Token'})
 
             if (decoded.userRole !== 'admin') {
                 return response.status(403).json({
@@ -100,10 +100,10 @@ router.delete('/api/admin/users/:id', async (request, response) => {
 
     try {
 
-        if (!token) throw new Error('No token provided');
+        if (!token) return response.status(401).json({message:'No token provided'});
         
         jwt.verify(token, Secret, async (error, decoded) => {
-            if (error) throw new Error('Invalid Token');
+            if (error) return response.status(401).json({message:'Invalid Token'});
 
             if (decoded.userRole !== 'admin') {
                 return response.status(400).json({
@@ -112,7 +112,7 @@ router.delete('/api/admin/users/:id', async (request, response) => {
             }
 
             const user = await User.findById(id);
-            if (!user) throw new Error('User not found');
+            if (!user) return response.status(401).json({message:'User not found'});
 
             await user.deleteOne();
 
